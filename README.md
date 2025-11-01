@@ -24,6 +24,7 @@ An assistive system  that enhances mobility and safety for visually impaired ind
 * **Software:** Arduino IDE
 
 ## System Architecture
+<img width="814" height="528" alt="image" src="https://github.com/user-attachments/assets/001f53b1-4f02-43f8-8e1f-d260d3a61a36" />
 
 ## Setup & Installation
 *  **Hardware Connections**
