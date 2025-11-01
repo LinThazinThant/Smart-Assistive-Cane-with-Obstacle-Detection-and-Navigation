@@ -54,8 +54,12 @@ An assistive system  that enhances mobility and safety for visually impaired ind
 
 ## Gallery
 * Complete setup
-  
+
+  <img width="400" height="1096" alt="image" src="https://github.com/user-attachments/assets/5670185b-3630-43a7-9dfd-993f8d69799c" />
+
 * Wiring schematic
+
+  <img width="784" height="998" alt="image" src="https://github.com/user-attachments/assets/cc9970d0-d331-4d76-890a-2ad46477ac94" />
 
 ## Technical Details
 * **Sensor Performance**
