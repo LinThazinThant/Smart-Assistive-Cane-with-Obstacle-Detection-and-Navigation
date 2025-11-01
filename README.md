@@ -100,3 +100,7 @@ Live demonstration showing sensor functionality and alert systems
 
 ## Contributing
 This project demonstrates embedded systems integration for assistive technology. Contributions for improved cloud connectivity, enhanced sensor accuracy, additional safety features, or better user experience are welcome to help the visually impaired community.
+
+## Authors
+* Lin Thazin Thant
+* Hein Kyaw Nyein
