@@ -46,137 +46,159 @@ const long mpuUpdateInterval = 200; // MPU6050 update interval (200 ms)
 updates (slower rate)
 
 /*****
-
+* SETUP FUNCTION - Initializes all components when ESP8266 starts
+* This function runs once at startup and prepares all hardware/ software components:
+  - Serial communication
+  - GPS module 
+  - I2C communication for MPU650
+  - Pin modes for ultrasonic sensor and output devices
+  - MPU6050 calibration and offset calculation
 *****/
 void setup() {
-Serial.begin(115200);
-gpsSerial.begin(9600);
-Wire.begin();
+   // Initialize serial communication (115200 baud rate)
+   Serial.begin(115200);
 
-// Pin Modes
-pinMode(trigPin, OUTPUT);
-pinMode(echoPin, INPUT);
-pinMode(buzzerPin, OUTPUT);
-pinMode(ledPin, OUTPUT);
-pinMode(motorPin, OUTPUT);
+   // Initialize GPS communication (9600 baud rate)
+   gpsSerial.begin(9600);
 
-// MPU6050 Initialization
-byte status = mpu.begin();
-Serial.print("MPU6050 status: ");
-Serial.println(status);
-if (status != 0) {
-Serial.println("MPU6050 connection failed!");
+   // Initialize I2C communication 
+   Wire.begin();
 
-while (true); // Stop execution if MPU6050 is not connected
+   // Configure pin modes 
+   pinMode(trigPin, OUTPUT);
+   pinMode(echoPin, INPUT);
+   pinMode(buzzerPin, OUTPUT);
+   pinMode(ledPin, OUTPUT);
+   pinMode(motorPin, OUTPUT);
+
+   // MPU6050 Initialization and Calibration
+   byte status = mpu.begin(); // initialize MPU6050
+   Serial.print("MPU6050 status: ");
+   Serial.println(status);
+   if (status != 0) {
+      Serial.println("MPU6050 connection failed!");
+   while (true); 
+   }
+
+   Serial.println("Calculating offsets...");
+   mpu.calcOffsets(); // calibrate MPU6050
+   Serial.println("Done!");
 }
 
-Serial.println("Calculating offsets...");
-mpu.calcOffsets(); // Calibrate MPU6050
-Serial.println("Done!");
-}
-
+/*****
+* MAIN LOOP - Continuous operattion handing all sensor reading and alert geenration
+* This function runs repeatedly and manages:
+   - GPS data processing and location updates
+   - Ultrasonic obstacle detection and distance measurement
+   - MPU6050 motion detection and orientation monitoring
+   - Multi-level alert system based on sensor inputs
+*****/
 void loop() {
-// ----- GPS Data Processing -----
-while (gpsSerial.available() > 0) {
-gps.encode(gpsSerial.read()); // Process GPS data
-}
+   // GPS Data Processing
+   while (gpsSerial.available() > 0) {
+      gps.encode(gpsSerial.read()); // process GPS data
+   }
+   // Update GPS information at specified intervals (5 seconds)
+   if (millis() - lastGPSCheck >= gpsInterval) {
+      lastGPSCheck = millis(); 
+      if (gps.location.isUpdated()) {
+         displayGPSInfo(); // display GPS data
+      } else {
+         Serial.println(" No GPS Fix. Waiting..."); // no satellite
+      }
 
-if (millis() - lastGPSCheck >= gpsInterval) {
-lastGPSCheck = millis(); // Reset the timer
-if (gps.location.isUpdated()) {
-displayGPSInfo(); // Display GPS data
-} else {
-Serial.println(" No GPS Fix. Waiting...");
-}
+   }
 
-}
+   // Ultrasonic Sensor Reading
+   // Measure distance at specified intervals (500 ms)
+   if (millis() - lastUltrasonicRead >= ultrasonicInterval) {
+      lastUltrasonicRead = millis(); 
+      // Generate ultrasonic pulse for distance measurement
+      digitalWrite(trigPin, LOW);
+      delayMicroseconds(2);
+      digitalWrite(trigPin, HIGH);
+      delayMicroseconds(10);
+      digitalWrite(trigPin, LOW);
+      // Measure echo pulse duration and calculate distance
+      duration = pulseIn(echoPin, HIGH);
+      distanceCm = duration * SOUND_SPEED / 2; // convert duration to distance
+      // Display measured distance
+      Serial.print(" Distance: ");
+      Serial.print(distanceCm);
+      Serial.println(" cm");
+   }
 
-// ----- Ultrasonic Sensor Reading -----
-if (millis() - lastUltrasonicRead >= ultrasonicInterval) {
-lastUltrasonicRead = millis(); // Reset the timer
-
-digitalWrite(trigPin, LOW);
-delayMicroseconds(2);
-digitalWrite(trigPin, HIGH);
-delayMicroseconds(10);
-digitalWrite(trigPin, LOW);
-duration = pulseIn(echoPin, HIGH);
-distanceCm = duration * SOUND_SPEED / 2;
-
-Serial.print(" Distance: ");
-Serial.print(distanceCm);
-Serial.println(" cm");
-}
-
-// ----- MPU6050 Reading (with Delay) -----
-if (millis() - lastMPUUpdate >= mpuUpdateInterval) {
-
-lastMPUUpdate = millis(); // Reset the timer for MPU6050 update
-
-mpu.update(); // Update MPU6050 data
-float angleX = mpu.getAngleX();
-float angleY = mpu.getAngleY();
-float angleZ = mpu.getAngleZ();
-
-// ----- Debugging MPU6050 data -----
-Serial.print(" Angle X: ");
-Serial.print(angleX);
-Serial.print("\tY: ");
-Serial.print(angleY);
-Serial.print("\tZ: ");
-Serial.println(angleZ);
-
-// ----- Motion Detection -----
-if (abs(angleX - prevAngleX) > 10 || abs(angleY - prevAngleY) > 10 ||
+   // MPU6050 Reading
+   // Update motion data at specified intervals (200 ms)
+   if (millis() - lastMPUUpdate >= mpuUpdateInterval) {
+      lastMPUUpdate = millis(); 
+      mpu.update(); // update MPU6050 data
+      float angleX = mpu.getAngleX();
+      float angleY = mpu.getAngleY();
+      float angleZ = mpu.getAngleZ();
+      // Displaying orientation data
+      Serial.print(" Angle X: ");
+      Serial.print(angleX);
+      Serial.print("\tY: ");
+      Serial.print(angleY);
+      Serial.print("\tZ: ");
+      Serial.println(angleZ);
+      // Motion detection 
+      if (abs(angleX - prevAngleX) > 10 || abs(angleY - prevAngleY) > 10 ||
 abs(angleZ - prevAngleZ) > 10) {
-Serial.println(" Motor ON");
-digitalWrite(motorPin, HIGH);
-delay(500);
-Serial.println(" Motor OFF");
+         Serial.println(" Motor ON");
+         digitalWrite(motorPin, HIGH); // vibration motor activates
+         delay(500);
+         Serial.println(" Motor OFF");
+         digitalWrite(motorPin, LOW); // vibration motor deactivates
+      }
+      prevAngleX = angleX;
+      prevAngleY = angleY;
+      prevAngleZ = angleZ;
+   }
 
-digitalWrite(motorPin, LOW);
+   // Alert System
+   if (distanceCm > 100 && distanceCm <= 200) {
+      // Far range (100-200cm): Slow beeping and blinking
+      tone(buzzerPin, 1000, 500); // 1000Hz tone for 500ms
+      digitalWrite(ledPin, HIGH);
+      delay(500);
+      digitalWrite(ledPin, LOW);
+   } else if (distanceCm > 30 && distanceCm <= 100) {
+      // Medium range (30-100cm): Fast beeping and blinking
+      tone(buzzerPin, 1500, 200); // 1500Hz tone for 200ms
+      digitalWrite(ledPin, HIGH);
+      delay(200);
+      digitalWrite(ledPin, LOW);
+   } else if (distanceCm <= 30 && distanceCm > 0) {
+      // Critical range (0-30cm): Continuous alarm
+      tone(buzzerPin, 2000); // 2000Hz tone 
+      digitalWrite(ledPin, HIGH);
+   } else {
+      // No obstacle: No alert
+      noTone(buzzerPin);
+      digitalWrite(ledPin, LOW);
+   }
+
+   yield(); // Allow ESP8266 to handle background tasks
 }
 
-prevAngleX = angleX;
-prevAngleY = angleY;
-prevAngleZ = angleZ;
-}
-
-// ----- Buzzer & LED Alerts -----
-if (distanceCm > 100 && distanceCm <= 200) {
-tone(buzzerPin, 1000, 500);
-digitalWrite(ledPin, HIGH);
-delay(500);
-digitalWrite(ledPin, LOW);
-} else if (distanceCm > 30 && distanceCm <= 100) {
-tone(buzzerPin, 1500, 200);
-digitalWrite(ledPin, HIGH);
-delay(200);
-digitalWrite(ledPin, LOW);
-} else if (distanceCm <= 30 && distanceCm > 0) {
-tone(buzzerPin, 2000);
-
-digitalWrite(ledPin, HIGH);
-} else {
-noTone(buzzerPin);
-digitalWrite(ledPin, LOW);
-}
-
-yield(); // Allow ESP8266 background tasks
-}
-
-// Display GPS Data
+/*****
+* GPS DATA DISPLAY - Shows location and navigation information
+* This function prints formatted GPS data to serial monitor when valid location is available
+* Displays: Latitude, Longitude, Altitude, Speed, and Satellite count
+*****/
 void displayGPSInfo() {
-Serial.print(" Latitude: ");
-Serial.println(gps.location.lat(), 6);
-Serial.print(" Longitude: ");
-Serial.println(gps.location.lng(), 6);
-Serial.print(" Altitude: ");
-Serial.println(gps.altitude.meters());
-Serial.print(" Speed: ");
-Serial.println(gps.speed.kmph());
-Serial.print(" Satellites: ");
-Serial.println(gps.satellites.value());
+   Serial.print(" Latitude: ");
+   Serial.println(gps.location.lat(), 6);  // 6 decimal places
+   Serial.print(" Longitude: ");
+   Serial.println(gps.location.lng(), 6); // 6 decimal places
+   Serial.print(" Altitude: ");
+   Serial.println(gps.altitude.meters()); // in meters
+   Serial.print(" Speed: ");
+   Serial.println(gps.speed.kmph()); // in km/ h
+   Serial.print(" Satellites: ");
+   Serial.println(gps.satellites.value());
 
-Serial.println();
+   Serial.println();
 }
