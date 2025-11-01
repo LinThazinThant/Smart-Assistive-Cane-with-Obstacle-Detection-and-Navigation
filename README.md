@@ -89,6 +89,7 @@ An assistive system  that enhances mobility and safety for visually impaired ind
 
 ## Project Demonstration
 **YouTube Link:** https://youtube.com/shorts/n3jXyvvX5u4?si=4-YmaAFkoqB7-Y_v 
+
 Live demonstration showing sensor functionality and alert systems
 
 ## Future Improvements
